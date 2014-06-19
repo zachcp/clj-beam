@@ -1,18 +1,24 @@
-;; Smile Specification
-;; http://www.daylight.com/dayhtml/doc/theory/theory.smiles.htmlsmiles.clj
+;; Smiles Specification
+;; http://www.daylight.com/dayhtml/doc/theory/theory.smiles.html
+;;
 
-; Try to outline a Clojure-based version of the Beam Smiles Parsing Library
-; https://github.com/johnmay/beam
-;
-;
-;
-;
 ; Basic Idea:
 ;   1. Get a Sequence of characters from a string
 ;   2. Use that Sequence to define elements
 ;   3. Use that Sequence to define bonds
 ;   4. Use that Sequence to Define Rings
 ;   5. Use That Sequence to define sterochemistry
+;
+;; There are five generic encoding rules, corresponding to specification of atoms,bonds, branches, ring closures and disconnections
+
+;;   1. Atoms specified by name without brackets. Within brackets hydrogen and formal charges must alwasy be specified
+;;   2. Bonds Single, double, triple, and aromatic bonds are represented by the symbols -, =, #, and :, respectively.
+;;      Adjacent atoms are assumed to be connected to each other by a single or aromatic bond (single and aromatic bonds may always be omitted).
+;;   3. Branches are specified by enclosing them in parentheses, and can be nested or stacked.
+;;      In all cases, the implicit connection to a parenthesized expression (a "branch") is to the left.
+;;   4. Cyclic structures are represented by breaking one bond in each ring.
+;;   5. Disconnected compounds are written as individual structures separated by a "." (period).
+
 ;
 (ns clj-beam.readsmiles
   (:gen-class)
@@ -28,18 +34,30 @@
 ;;; Master Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def readsmiles
-  "A graph specifying the parsing of a smiles string"
-  {
-   :sqs  (p/fnk [smi] (string->keys smi))
-   :atms (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
 
    ; need:
    ; 1: find isotopes
    ; 2: find charges
    ; 2: find find branches
-   ; 3: allow bonding between branch and moelcuel before it
+   ; 3: allow bonding between branch and moelcule before it
    ; 4: some global state to avoid doubling up
+
+
+(def readsmiles
+  "A graph specifying the parsing of a smiles string"
+  {
+   :sqs   (p/fnk [smi] (string->keys smi))
+   :prnth (p/fnk [sqs] (getparenthesized sqs))
+   ; inside parenthesis are branches
+   ;  order of operation is to: determine nesting and then add atoms and
+   :brckt (p/fnk [sqs] (getbracketed sqs))
+   ; inside brackets molecules must explicity specify charge and Hydrogens and they can also specify isotope
+        ; search order: charge, hydrogens, isotope
+
+   :atms  (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
+   ; this should be modified to initially only return atom informaiton for atoms outside of brackets
+   ;(i.e no extra Isotope or charge information)
+
    :gramm (p/fnk [sqs] (non-element-indices sqs)) ; returns lookup map for non atomic symbols
    :sbnds (p/fnk [sqs] (detect-singlebonds sqs))
    :dbnds (p/fnk [sqs] (detect-doublebonds sqs))
@@ -148,7 +166,7 @@
                 [[f r] (subvec charvector f (+ r 1)) ] )))))
 
 (defn getparenthesized
-  "Find Bracketed Subsequences"
+  "Find Branches Subsequences: Note - check for nested paretheses"
   [charvector]
   (let [;find positions of subsequences
         lb (get-indices :(  charvector ) ;left bracket
@@ -160,8 +178,6 @@
                    r (- (second b) 1) ]
                 [[f r] (subvec charvector f (+ r 1)) ] )))))
 
-(getbracketed sequences12)
-(getparenthesized sequences12)
 
 
 
@@ -192,7 +208,8 @@ smi12
 (def sequences12 (string->keys smi12))
 (def atoms (symbol->Atom sequences))
 (non-element-indices sequences12)
-
+(getbracketed sequences12)
+(getparenthesized sequences12)
 
 ;;; Helper Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -221,5 +238,3 @@ smi12
     (filter #(= (second %) x)
     (map-indexed vector coll))))
 
-
-smiles
