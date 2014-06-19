@@ -14,8 +14,6 @@
 ;   4. Use that Sequence to Define Rings
 ;   5. Use That Sequence to define sterochemistry
 ;
-
-
 (ns clj-beam.readsmiles
   (:gen-class)
   (:require
@@ -27,11 +25,8 @@
    [plumbing.map :as map]
    [clj-beam.schemas :as schemas]))
 
-
-
 ;;; Master Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (def readsmiles
   "A graph specifying the parsing of a smiles string"
@@ -45,16 +40,14 @@
    ; 2: find find branches
    ; 3: allow bonding between branch and moelcuel before it
    ; 4: some global state to avoid doubling up
-
+   :gramm (p/fnk [sqs] (non-element-indices sqs)) ; returns lookup map for non atomic symbols
    :sbnds (p/fnk [sqs] (detect-singlebonds sqs))
    :dbnds (p/fnk [sqs] (detect-doublebonds sqs))
    :tbnds (p/fnk [sqs] (detect-triplebonds sqs))
-   :bnds (p/fnk [sqs] (str "needs to be done"))
-   :g    (p/fnk [atms sbonds dbonds tbonds]
-                {:atoms  [atms]
-                 :bonds  [ stms sbonds dbonds tbonds ]})})
-
-
+   :bnds  (p/fnk [sqs] (str "needs to be done"))
+   :g     (p/fnk [atms sbonds dbonds tbonds]
+                 {:atoms  [atms]
+                  :bonds  [atms sbonds dbonds tbonds ]})})
 
 ;; Funcitons
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -72,11 +65,10 @@
              (map conv)
              (vec))))
 
-
 (defn symbol->Atom
   "Map Symbol to Atom Creation"
   [charvect]
-  (for [ idx (range (count v)) ]
+  (for [ idx (range (count charvect)) ]
     (let [ sym (get charvect idx)]
        (cond
         (in? [:Br :B :Cl :C :N :O :P :S :F :I] sym )
@@ -86,7 +78,6 @@
         (in? [:H :D :T] sym )
              {:element (sym elementmap) :aromatic :No}
         :else "There is a problem" ))))
-
 
 (defn detect-singlebonds
   "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
@@ -100,7 +91,7 @@
            (and (in? (keys elementmap) (first p))
                 (in? (keys elementmap) (second p)))
              {:atom1 (first i) :atom2 (second i) :order :Single :aromatic :No} ;return a map corresponding to the bond
-                ))))
+         ))))
 
 (defn detect-rings
   "Detect Ring Indices by Location of the Numbers: Note Need to check for aromatic or not!!!"
@@ -115,7 +106,7 @@
              {:atom1 (- (first b) 1) :atom2 (- (second b) 1)}  )))
 
 (defn detect-doublebonds
-  "Detect Double Bonds: Note that this method doe snot see things in brackets"
+  "Detect Double Bonds: Note that this method does not see things in brackets"
    [charvect]
      (let [dbs (get-indices := charvect)]
          (for [d dbs]
@@ -129,11 +120,55 @@
          (for [d dbs]
              {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
 
+(defn non-element-indices
+  "Get all of the non-Atomic character indices"
+  [charvector]
+  (let [c [:* :\ :/ :[ :] :( :) :+  :.  :@ ] ]
+   (into {}
+     (for [s c]
+       [s (get-indices s charvector)]))))
+
+(defn findisotopes
+  "Find Isotopes in the Vector"
+   [charvect]
+
+  )
+
+(defn getbracketed
+  "Find Bracketed Subsequences"
+  [charvector]
+  (let [;find positions of subsequences
+        lb (get-indices :[ charvector ) ;left bracket
+        rb (get-indices :] charvector ) ;right bracket`
+        br (partition 2 (interleave lb rb))]
+        (into {}
+           (for [b br]
+             (let [f (+ (first  b) 1)
+                   r (- (second b) 1) ]
+                [[f r] (subvec charvector f (+ r 1)) ] )))))
+
+(defn getparenthesized
+  "Find Bracketed Subsequences"
+  [charvector]
+  (let [;find positions of subsequences
+        lb (get-indices :(  charvector ) ;left bracket
+        rb (get-indices :)  charvector ) ;right bracket`
+        br (partition 2 (interleave lb rb))]
+        (into {}
+           (for [b br]
+             (let [f (+ (first  b) 1)
+                   r (- (second b) 1) ]
+                [[f r] (subvec charvector f (+ r 1)) ] )))))
+
+(getbracketed sequences12)
+(getparenthesized sequences12)
+
+
 
 ;; Scratch
 (string->keys smi3)
 sequences2
-(detect-single-bonds sequences2)
+(detect-singlebonds sequences2)
 (detect-rings sequences2)
 (detect-doublebonds sequences2)
 
@@ -145,7 +180,8 @@ sequences2
 (def smi2 (second smiles))
 (def smi3 (nth smiles 3))
 (def smi6 (nth smiles 6))
-smi3
+(def smi12 (nth smiles 12))
+smi12
 (= (string->keys smi1) '(:C :C))
 (= (string->keys smi2) '(:O := :C := :O))
 (= (string->keys smi3) '(:C :C :N :( :C :C :) :C :C))
@@ -153,8 +189,9 @@ smi3
 
 (def sequences (string->keys smi3))
 (def sequences2 (string->keys smi6))
+(def sequences12 (string->keys smi12))
 (def atoms (symbol->Atom sequences))
-
+(non-element-indices sequences12)
 
 
 ;;; Helper Functions
@@ -184,3 +221,5 @@ smi3
     (filter #(= (second %) x)
     (map-indexed vector coll))))
 
+
+smiles
