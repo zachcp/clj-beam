@@ -119,43 +119,6 @@
 (def smileseager (graph/compile readsmiles))
 (:g  (smileseager {:smi "CCCC"}))
 
-
-;(def simple "CCCCCC")
-;(def smi "C[C]CBr(O)1ccc1CCONC2Br")
-;(def smiles-keys (string->keys simple))
-;smiles-keys
-;(map symbol->Atom smiles-keys)
-
-
-;(def addatom)
-;(def ring)
-;(def addaromatic)
-;(def elementmap)
-
-
-
-;; (def actionmap
-;;   "Map Letters to Actions"
-;;    {  :Br addatom  :B addatom
-;;       :Cl addatom  :C addatom
-;;       :N  addatom  :O addatom
-;;       :P  addatom  :S addatom
-;;       :F  addatom  :I addatom
-;;       :b  addaromatic
-;;       :c  addaromatic
-;;       :n  addaromatic
-;;       :o  addaromatic
-;;       :p  addaromatic
-;;       :s  addaromatic
-;;       :H  addatom
-;;       :D  addatom
-;;       :T  addatom
-;;       :0  ring     :1  ring
-;;       :2  ring     :3  ring
-;;       :4  ring     :5  ring
-;;       :6  ring     :7  ring
-;;       :8  ring     :9  ring })
-
 (def assemblesmiles
   "A graph specifying how to assemble the process"
   {:smi (p/fnk [smi] (map charmpa ))})
@@ -175,14 +138,235 @@
   [seq elm]
   (not (in? seq elm)))
 
+(into [] (range 10))
 
 
 
 
 
 
-;(defrecord cParser stack graph ringbonds arrangement
-;                    configurations start openRings strict)
+;; Near Literal Translation of the Parser
+
+(def baseparser
+  {:stack (into [](range 10))
+   :graph basegraph
+   :ringbonds [] ;list of rings
+   :arrangement {:1 :2}
+   :configurations "none"
+   :start #()
+   :bond :IMPLICIT
+   :openRings 0
+   :strict nil})
+
+(def basegraph
+  { :atoms  []
+    :edges  []
+    :topologies  {}
+    :order  0
+    :size   0
+    :delocalized :True})
+
+(into () (range 10))
+(pop  (into [] (range 10)))
+(pop '(1 2 3 4 5 6 7 8 9 10))
+(range 10)
+(def a (range 10))
+(pop 'a)
+
+baseparser
+(assoc baseparser :bond :True)
+
+(def a (assoc-in baseparser [:graph :atoms 0] {:element :unknown}  ))
+
+a
+(assoc-in a [:graph :atoms ] [{:element :unknown}]  )
+
+(:graph baseparser)
+
+(defn parsesmiles [parser symb]
+  ;try a literal translation ofhte parsing function
+  (let [idx (count (:atoms (:graph parser)))]
+    (cond
+      (in? [:Br :B :Cl :C :N :O :P :S :F :I :H :D :T] symb )
+          (;add an atom to the atomlist
+           (assoc-in parser [:graph :atoms (inc idx)] {:element (symb elementmap) :aromatic :No})
+           ;add an edge
+           (let [v (:order(:graph parser))
+                 u (pop (:stack parser))
+                 b-idx (count (:bonds (:graoh parser)))]
+              (assoc-in parser [:graph :bonds (inc b-idx)] {:element (symb elementmap) :aromatic :No})
+              (if (u in (keys (:arrangement parser)))
+               ;line 274 of the parser program
+                assoc-in parser [:graph :bonds (inc b-idx)] {:element (symb elementmap) :aromatic :No})))
+      (in? [:c :n :o :p :s ] symb )
+          (assoc-in parser [:graph :atoms (inc idx)] {:element (symb elementmap) :aromatic :Yes}  )
+      (in? [:0 :1 :2 :3 :4  :5 :6 :7 :8 :9 ]
+         ring)
+
+     (= :* symb)
+     (= :B symb)
+          (assoc-in parser [:graph :atoms (inc idx)] {:element :Boron}  )
+
+
+    )))
+                case 'B':
+                    if (buffer.getIf('r'))
+                        addAtom(AtomImpl.AliphaticSubset.Bromine);
+                    else
+                        addAtom(AtomImpl.AliphaticSubset.Boron);
+                    break;
+                case 'C':
+                    if (buffer.getIf('l'))
+                        addAtom(AtomImpl.AliphaticSubset.Chlorine);
+                    else
+                        addAtom(AtomImpl.AliphaticSubset.Carbon);
+                    break;
+                case 'N':
+                    addAtom(AtomImpl.AliphaticSubset.Nitrogen);
+                    break;
+                case 'O':
+                    addAtom(AtomImpl.AliphaticSubset.Oxygen);
+                    break;
+                case 'P':
+                    addAtom(AtomImpl.AliphaticSubset.Phosphorus);
+                    break;
+                case 'S':
+                    addAtom(AtomImpl.AliphaticSubset.Sulfur);
+                    break;
+                case 'F':
+                    addAtom(AtomImpl.AliphaticSubset.Fluorine);
+                    break;
+                case 'I':
+                    addAtom(AtomImpl.AliphaticSubset.Iodine);
+                    break;
+
+                // aromatic subset
+                case 'b':
+                    addAtom(AtomImpl.AromaticSubset.Boron);
+                    g.markDelocalised();
+                    break;
+                case 'c':
+                    addAtom(AtomImpl.AromaticSubset.Carbon);
+                    g.markDelocalised();
+                    break;
+                case 'n':
+                    addAtom(AtomImpl.AromaticSubset.Nitrogen);
+                    g.markDelocalised();
+                    break;
+                case 'o':
+                    addAtom(AtomImpl.AromaticSubset.Oxygen);
+                    g.markDelocalised();
+                    break;
+                case 'p':
+                    addAtom(AtomImpl.AromaticSubset.Phosphorus);
+                    g.markDelocalised();
+                    break;
+                case 's':
+                    addAtom(AtomImpl.AromaticSubset.Sulfur);
+                    g.markDelocalised();
+                    break;
+
+
+                // D/T for hydrogen isotopes - non-standard but OpenSMILES spec
+                // says it's possible. The D and T here are automatic converted
+                // to [2H] and [3H].
+                case 'H':
+                    if (strict)
+                        throw new InvalidSmilesException("hydrogens should be specified in square brackets - '[H]'",
+                                                         buffer);
+                    addAtom(AtomImpl.EXPLICIT_HYDROGEN);
+                    break;
+                case 'D':
+                    if (strict)
+                        throw new InvalidSmilesException("deuterium should be specified as a hydrogen isotope - '[2H]'",
+                                                         buffer);
+                    addAtom(AtomImpl.DEUTERIUM);
+                    break;
+                case 'T':
+                    if (strict)
+                        throw new InvalidSmilesException("tritium should be specified as a hydrogen isotope - '[3H]'",
+                                                         buffer);
+                    addAtom(AtomImpl.TRITIUM);
+                    break;
+
+                // bracket atom
+                case '[':
+                    addAtom(readBracketAtom(buffer));
+                    break;
+
+                // ring bonds
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    ring(c - '0', buffer);
+                    break;
+                case '%':
+                    int num = buffer.getNumber(2);
+                    if (num < 0)
+                        throw new InvalidSmilesException("a number (<digit>+) must follow '%':", buffer);
+                    ring(num, buffer);
+                    break;
+
+                // bond/dot
+                case '-':
+                    bond = Bond.SINGLE;
+                    break;
+                case '=':
+                    bond = Bond.DOUBLE;
+                    break;
+                case '#':
+                    bond = Bond.TRIPLE;
+                    break;
+                case '$':
+                    bond = Bond.QUADRUPLE;
+                    break;
+                case ':':
+                    g.markDelocalised();
+                    bond = Bond.AROMATIC;
+                    break;
+                case '/':
+                    bond = Bond.UP;
+                    break;
+                case '\\':
+                    bond = Bond.DOWN;
+                    break;
+                case '.':
+                    bond = Bond.DOT;
+                    break;
+
+                // branching
+                case '(':
+                    if (stack.empty())
+                        throw new InvalidSmilesException("cannot open branch - there were no previous atoms:",
+                                                         buffer);
+                    stack.push(stack.peek());
+                    break;
+                case ')':
+                    if (stack.size() < 2)
+                        throw new InvalidSmilesException("closing of an unopened branch:",
+                                                         buffer);
+                    stack.pop();
+                    break;
+
+                // termination
+                case '\t':
+                case ' ':
+                case '\n':
+                case '\r':
+                    return;
+
+                default:
+                    throw new InvalidSmilesException("unexpected character:", buffer);
+            }
+        }
+    }
 
 
 ;; Addatom
