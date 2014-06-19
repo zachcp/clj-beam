@@ -143,7 +143,6 @@
          (for [d dbs]
              {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
 
-
 (defn detect-triplebonds
   "Detect Triple Bonds: Note that this method doe snot see things in brackets"
    [charvect]
@@ -169,6 +168,7 @@
   "Find Bracketed Subsequences"
   [charvector]
   (let [;find positions of subsequences
+        ; brackets are not nested so the lb/rb should be consecutive
         lb (get-indices :[ charvector ) ;left bracket
         rb (get-indices :] charvector ) ;right bracket`
         br (partition 2 (interleave lb rb))]
@@ -177,6 +177,12 @@
              (let [f (+ (first  b) 1)
                    r (- (second b) 1) ]
                 [[f r] (subvec charvector f (+ r 1)) ] )))))
+
+
+
+(defn getnested
+  "Check for nested smiles"
+  [brackets])
 
 (defn getparenthesized
   "Find Branches Subsequences: Note - check for nested paretheses"
@@ -191,6 +197,35 @@
                    r (- (second b) 1) ]
                 [[f r] (subvec charvector f (+ r 1)) ] )))))
 
+(defn getparenthesized2
+  "Find Parenthesized Data Subsequences"
+  [charvector]
+  (let [;find positions of subsequences
+        lb (get-indices :( charvector ) ;left bracket
+        rb (get-indices :) charvector ) ;right bracket`
+        le (interleave lb (repeat (count lb) "L") )
+        re (interleave rb (repeat (count rb) "R") )
+        ;sorted brackets with index and left/right mapped
+        srtb  (sort-by first (partition 2 (concat le re )))
+        vs    (into [] (map second srtb ))
+        rmost (subvec vs (/ (count vs) 2) )
+                           ]
+    (cond
+       ;only one set of brackets
+       (= (count srtb) 2 )
+          (let [f (+ (first lb) 1)
+                r (- (first rb) 1) ]
+                   { [f r ] (subvec charvector f (+ r 1)) } )
+       ;concentric nesting
+       (every?  #(= %"R") rmost)
+           (let [f (+ (first lb) 1)
+                r (- (first rb) 1) ]
+                   { [f r ] (subvec charvector f (+ r 1)) } )
+       ;concentric nesting
+       (every?  #(= %"R") rmost)
+           (let [f (+ (first lb) 1)
+                r (- (first rb) 1) ]
+                   { [f r ] (subvec charvector f (+ r 1)) } ))))
 
 
 
@@ -209,6 +244,7 @@ sequences2
 (def smi2 (second smiles))
 (def smi3 (nth smiles 3))
 (def smi6 (nth smiles 6))
+(def smi8 (nth smiles 8))
 (def smi12 (nth smiles 12))
 smi12
 (= (string->keys smi1) '(:C :C))
@@ -218,6 +254,7 @@ smi12
 
 (def sequences (string->keys smi3))
 (def sequences2 (string->keys smi6))
+(def sequences8 (string->keys smi8))
 (def sequences12 (string->keys smi12))
 (def atoms (symbol->Atom sequences))
 (non-element-indices sequences12)
@@ -256,3 +293,4 @@ smi12
     (filter #(= (second %) x)
     (map-indexed vector coll))))
 
+(map-indexed vector sequences8)
