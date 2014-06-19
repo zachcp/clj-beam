@@ -11,4 +11,4 @@ c1cccc1
 F/C=C/F
 F/C=C\F
 N[C@@H](C)C(=O)O
-N{C@H](C)C(=O)O
+N[C@H](C)C(=O)O
