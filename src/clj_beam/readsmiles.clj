@@ -23,6 +23,7 @@
 (ns clj-beam.readsmiles
   (:gen-class)
   (:require
+   [clojure.set :as cset]
    [clojure.string :as string]
    [schema.core :as s]
    [plumbing.core :as p :include-macros true]
@@ -46,24 +47,30 @@
 (def readsmiles
   "A graph specifying the parsing of a smiles string"
   {
-   :sqs   (p/fnk [smi] (string->keys smi))
-   :prnth (p/fnk [sqs] (getparenthesized sqs))
+   :sqs    (p/fnk [smi] (string->keys smi))
+   :prnth  (p/fnk [sqs] (getparenthesized sqs))
    ; inside parenthesis are branches
    ;  order of operation is to: determine nesting and then add atoms and
-   :brckt (p/fnk [sqs] (getbracketed sqs))
+   :brckt  (p/fnk [sqs] (getbracketed sqs))
    ; inside brackets molecules must explicity specify charge and Hydrogens and they can also specify isotope
         ; search order: charge, hydrogens, isotope
 
-   :atms  (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
+   :nbatms (p/fnk [sqs brckt] ((let [;get index of all bracketed atoms, and use the rest fot defining atoms
+                                     bracketed    (concat (map #(range (first %) (+ 1 (second %))) (keys brckt)))
+                                     notbracketed (cset/difference bracketed (range (count sqs)))]
+                                     (into [] (map symbol->Atom sqs)))))
+
+
+   :atms   (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
    ; this should be modified to initially only return atom informaiton for atoms outside of brackets
    ;(i.e no extra Isotope or charge information)
 
-   :gramm (p/fnk [sqs] (non-element-indices sqs)) ; returns lookup map for non atomic symbols
-   :sbnds (p/fnk [sqs] (detect-singlebonds sqs))
-   :dbnds (p/fnk [sqs] (detect-doublebonds sqs))
-   :tbnds (p/fnk [sqs] (detect-triplebonds sqs))
-   :bnds  (p/fnk [sqs] (str "needs to be done"))
-   :g     (p/fnk [atms sbonds dbonds tbonds]
+   :gramm  (p/fnk [sqs] (non-element-indices sqs)) ; returns lookup map for non atomic symbols
+   :sbnds  (p/fnk [sqs] (detect-singlebonds sqs))
+   :dbnds  (p/fnk [sqs] (detect-doublebonds sqs))
+   :tbnds  (p/fnk [sqs] (detect-triplebonds sqs))
+   :bnds   (p/fnk [sqs] (str "needs to be done"))
+   :g      (p/fnk [atms sbonds dbonds tbonds]
                  {:atoms  [atms]
                   :bonds  [atms sbonds dbonds tbonds ]})})
 
@@ -85,17 +92,19 @@
 
 (defn symbol->Atom
   "Map Symbol to Atom Creation"
-  [charvect]
-  (for [ idx (range (count charvect)) ]
-    (let [ sym (get charvect idx)]
-       (cond
-        (in? [:Br :B :Cl :C :N :O :P :S :F :I] sym )
-             {:element ( sym elementmap) :aromatic :No :index idx}
-        (in? [:c :n :o :p :s ] sym )
-             {:element (sym elementmap) :aromatic :Yes}
-        (in? [:H :D :T] sym )
-             {:element (sym elementmap) :aromatic :No}
-        :else "There is a problem" ))))
+  ( [charvect]
+    (symbol->Atom charvect (range (count charvect)))) ;default is to use the entire vector
+  ( [charvect indx]
+     (for [ idx indx ]
+       (let [ sym (get charvect idx)]
+         (cond
+          (in? [:Br :B :Cl :C :N :O :P :S :F :I] sym )
+               {:element ( sym elementmap) :aromatic :No :index idx}
+          (in? [:c :n :o :p :s ] sym )
+               {:element (sym elementmap) :aromatic :Yes}
+          (in? [:H :D :T] sym )
+               {:element (sym elementmap) :aromatic :No}
+          :else "There is a problem" )))))
 
 (defn detect-singlebonds
   "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
@@ -209,6 +218,15 @@ smi12
 (def atoms (symbol->Atom sequences))
 (non-element-indices sequences12)
 (getbracketed sequences12)
+(keys (getbracketed sequences12))
+(concat (map #(range (first %) (+ 1 (second %))) (keys (getbracketed sequences12))))
+
+(def a (range 2 (+ 5 1)))
+(def b (range 6 (+ 8 1)))
+
+(apply mapcat a b)
+(concat a b)
+
 (getparenthesized sequences12)
 
 ;;; Helper Functions
