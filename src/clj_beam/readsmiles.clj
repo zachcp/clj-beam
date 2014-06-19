@@ -47,32 +47,36 @@
 (def readsmiles
   "A graph specifying the parsing of a smiles string"
   {
+   ;get Seq from strings Note: will need to adopt this for stremaing and from strings due to
+   ; issue with backspace character
    :sqs    (p/fnk [smi] (string->keys smi))
+   ;use Seq to find branches
    :prnth  (p/fnk [sqs] (getparenthesized sqs))
-   ; inside parenthesis are branches
-   ;  order of operation is to: determine nesting and then add atoms and
+     ; inside parenthesis are branches
+     ;  order of operation is to: determine nesting and then add atoms and
+   ;use Seq to find brackets`
    :brckt  (p/fnk [sqs] (getbracketed sqs))
-   ; inside brackets molecules must explicity specify charge and Hydrogens and they can also specify isotope
-        ; search order: charge, hydrogens, isotope
+     ; inside brackets molecules must explicity specify charge and Hydrogens and they can also specify isotope
+     ; search order: charge, hydrogens, isotope
 
+   ;add nonbracketed atoms
    :nbatms (p/fnk [sqs brckt] ((let [;get index of all bracketed atoms, and use the rest fot defining atoms
                                      bracketed    (concat (map #(range (first %) (+ 1 (second %))) (keys brckt)))
                                      notbracketed (cset/difference bracketed (range (count sqs)))]
                                      (into [] (map symbol->Atom sqs)))))
 
 
-   :atms   (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
-   ; this should be modified to initially only return atom informaiton for atoms outside of brackets
-   ;(i.e no extra Isotope or charge information)
-
    :gramm  (p/fnk [sqs] (non-element-indices sqs)) ; returns lookup map for non atomic symbols
+
+   ;create single, double and triple bonds
    :sbnds  (p/fnk [sqs] (detect-singlebonds sqs))
    :dbnds  (p/fnk [sqs] (detect-doublebonds sqs))
    :tbnds  (p/fnk [sqs] (detect-triplebonds sqs))
+
    :bnds   (p/fnk [sqs] (str "needs to be done"))
    :g      (p/fnk [atms sbonds dbonds tbonds]
-                 {:atoms  [atms]
-                  :bonds  [atms sbonds dbonds tbonds ]})})
+                 {:atoms  [nbatms]
+                  :bonds  [nbatms sbonds dbonds tbonds ]})})
 
 ;; Funcitons
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -223,10 +227,6 @@ smi12
 
 (def a (range 2 (+ 5 1)))
 (def b (range 6 (+ 8 1)))
-
-(apply mapcat a b)
-(concat a b)
-
 (getparenthesized sequences12)
 
 ;;; Helper Functions
