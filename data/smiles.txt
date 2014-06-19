@@ -1,0 +1,14 @@
+CC
+O=C=O
+C#N
+CCN(CC)CC
+CC(=O)O
+C1CCCCC1
+c1cccc1
+[OH3+]
+[2H]O[2H]
+[235U]
+F/C=C/F
+F/C=C\F
+N[C@@H](C)C(=O)O
+N{C@H](C)C(=O)O
