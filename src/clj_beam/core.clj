@@ -10,14 +10,9 @@
    [plumbing.fnk.pfnk :as pfnk :include-macros true]
    [plumbing.graph :as graph :include-macros true]
    [plumbing.map :as map])
-  (:import [uk.ac.ebi.beam Atom Graph Parser CharBuffer]))
+  ;(:import [uk.ac.ebi.beam Atom Graph Parser CharBuffer])
+  )
 
-
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println "Hello, World!"))
 
 ;; Graph g = Graph.fromSmiles("CCO");
 ;; String smi = g.toSmiles();

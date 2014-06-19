@@ -11,7 +11,6 @@
                  ;[uk.ac.ebi.beam/beam-core "0.7-SNAPSHOT"]
                  ;[uk.ac.ebi.beam/beam-func "0.7-SNAPSHOT"]
                  ]
-  :main ^:skip-aot clj-beam.core
   :target-path "target/%s"
   :repositories [["ebi-repo" "http://www.ebi.ac.uk/intact/maven/nexus/content/repositories/ebi-repo" ]
                  ["ebi-repo-snapshots" "http://www.ebi.ac.uk/intact/maven/nexus/content/repositories/ebi-repo" ]]

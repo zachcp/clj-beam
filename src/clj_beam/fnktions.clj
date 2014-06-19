@@ -32,7 +32,7 @@
 
    (s/optional-key :isotope) long
    (s/optional-key :charge) long
-   (s/optional-key :hydrogens) long
+   (s/optional-key :hydrogens) int
    (s/optional-key :x) long
    (s/optional-key :y) long
    (s/optional-key :z) long })
@@ -46,13 +46,13 @@
 
 (def Molecule
   "A Molecule is a Collection of Atoms and Bonds"
-  {(s/optional-key :name) [s/String]
+  {(s/optional-key :name) [s/Str]
    :atoms [Atom]
    :bonds  [Bond]})
 
 (def Graph
   "A Graph is a Collection of Atoms and Bonds with some other Information"
-  {(s/optional-key :name) [s/String]
+  {(s/optional-key :name) [s/Str]
    :atoms  [Atom]
    :bonds  [Bond]
    :topologies  [Bond]
@@ -67,10 +67,11 @@
 (def readsmiles
   "A graph specifying the parsing of a smiles string"
   {
-   :Graph (p/fnk  []     (Graph))
-   :seqs  (p/fnk  [smi]  (string->keys smi))
-   :atoms (p/fnk  [seqs] (map assignfunctions))
-   :bonds (p/fnk  [seqs] (map asmble)) })
+   :sqs  (p/fnk [smi] (string->keys smi))
+   :atms (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
+   :bnds (p/fnk [sqs] (str "needs to be done"))
+   :g    (p/fnk [atms] {:atoms atms } )})
+
 
 (defn string->keys [smi]
   "Take a Smiles String and get a sequence of parsed smiles units"
@@ -84,6 +85,76 @@
              (filter #(not= (first %) \l))
              (map conv))))
 
+
+;;
+;;
+;; Still Need to Figure out the Ring issue
+
+(defn symbol->Atom
+  "Map Symbol to Atom Creation"
+  [sym]
+  (cond
+    (in? [:Br :B :Cl :C :N :O :P :S :F :I] sym )
+         {:element (sym elementmap) :aromatic :No}
+    (in? [:c :n :o :p :s ] sym )
+         {:element (sym elementmap) :aromatic :Yes}
+    (in? [:H :D :T] sym )
+         {:element (sym elementmap) :aromatic :No}
+    (in? [:0 :1 :2 :3 :4  :5 :6 :7 :8 :9 ]
+         ring)
+    :else "There is a prbolem" ))
+
+
+(def elementmap {
+  :* :Unknown    :Br :Bromine   :B  :Boron
+  :Cl :Chlorine  :C :Carbon     :N :Nitrogen
+  :O :Oxygen     :P :Phosphorus :S :Sulfur
+  :F :Fluorine   :I :Iodine     :b :Boron
+  :c :Carbon     :n :Nitrogen   :o :Oxygen
+  :p :Phosphorus :s :Sulfur     :H :Hydrogen
+  :D :DEUTERIUM  :T :TRITIUM })
+
+
+
+(def smileseager (graph/compile readsmiles))
+(:g  (smileseager {:smi "CCCC"}))
+
+
+;(def simple "CCCCCC")
+;(def smi "C[C]CBr(O)1ccc1CCONC2Br")
+;(def smiles-keys (string->keys simple))
+;smiles-keys
+;(map symbol->Atom smiles-keys)
+
+
+;(def addatom)
+;(def ring)
+;(def addaromatic)
+;(def elementmap)
+
+
+
+;; (def actionmap
+;;   "Map Letters to Actions"
+;;    {  :Br addatom  :B addatom
+;;       :Cl addatom  :C addatom
+;;       :N  addatom  :O addatom
+;;       :P  addatom  :S addatom
+;;       :F  addatom  :I addatom
+;;       :b  addaromatic
+;;       :c  addaromatic
+;;       :n  addaromatic
+;;       :o  addaromatic
+;;       :p  addaromatic
+;;       :s  addaromatic
+;;       :H  addatom
+;;       :D  addatom
+;;       :T  addatom
+;;       :0  ring     :1  ring
+;;       :2  ring     :3  ring
+;;       :4  ring     :5  ring
+;;       :6  ring     :7  ring
+;;       :8  ring     :9  ring })
 
 (def assemblesmiles
   "A graph specifying how to assemble the process"
@@ -106,8 +177,6 @@
 
 
 
-(def smi "C[C]CBr(O)1ccc1CCONC2Br")
-(string->keys smi)
 
 
 
@@ -116,46 +185,75 @@
 ;                    configurations start openRings strict)
 
 
-Addatom:
-addAtom(AtomImpl.AliphaticSubset.Sulfur);
-addAtom(AtomImpl.AromaticSubset.Boron);
-g.markDelocalised();
-case '[':
-  addAtom(readBracketAtom(buffer));
-case '9':
-  ring(c - '0', buffer);
-case '%':
-  int num = buffer.getNumber(2);
-  if (num < 0)
-      throw new InvalidSmilesException("a number (<digit>+) must follow '%':", buffer);
-  ring(num, buffer);
+;; Addatom
+;; addAtom(AtomImpl.AliphaticSubset.Sulfur);
+;; addAtom(AtomImpl.AromaticSubset.Boron);
+;; g.markDelocalised();
+;; case '[':
+;;   addAtom(readBracketAtom(buffer));
+;; case '9'
+;;   ring(c - '0', buffer);
+;; case '%':
+;;   int num = buffer.getNumber(2);
+;;   if (num < 0)
+;;       throw new InvalidSmilesException("a number (<digit>+) must follow '%':", buffer);
+;;   ring(num, buffer);
 
-;then bonds:
-case '\\':
-  bond = Bond.DOWN;
+;; ;then bonds:
+;; case '\\':
+;;   bond = Bond.DOWN;
 
-// branching
-    case '(':
-        if (stack.empty())
-            throw new InvalidSmilesException("cannot open branch - there were no previous atoms:",
-                                             buffer);
-        stack.push(stack.peek());
-        break;
-    case ')':
-        if (stack.size() < 2)
-            throw new InvalidSmilesException("closing of an unopened branch:",
-                                             buffer);
-        stack.pop();
-        break;
+;; // branching
+;;     case '(':
+;;         if (stack.empty())
+;;             throw new InvalidSmilesException("cannot open branch - there were no previous atoms:",
+;;                                              buffer);
+;;         stack.push(stack.peek());
+;;         break;
+;;     case ')':
+;;         if (stack.size() < 2)
+;;             throw new InvalidSmilesException("closing of an unopened branch:",
+;;                                              buffer);
+;;         stack.pop();
+;;         break;
 
-    // termination
-    case '\t':
-    case ' ':
-    case '\n':
-    case '\r':
-        return;
+;;     // termination
+;;     case '\t':
+;;     case ' ':
+;;     case '\n':
+;;     case '\r':
+;;         return;
+
+(defn addatom [at graph]
+  "Add an atom to a graph"
+  (assoc at g)
+  )
 
 
+
+;; private void addAtom(Atom a) {
+;;         int v = g.addAtom(a);
+;;         if (!stack.empty()) {
+;;             int u = stack.pop();
+;;             if (bond != Bond.DOT)
+;;                 g.addEdge(new Edge(u, v, bond));
+;;             else
+;;                 start.add(v); // start of a new run
+;;             if (arrangement.containsKey(u))
+;;                 arrangement.get(u).add(v);
+
+;;         }
+;;         stack.push(v);
+;;         bond = Bond.IMPLICIT;
+
+;;         // configurations used to create topologies after parsing
+;;         if (configuration != Configuration.UNKNOWN) {
+;;             configurations.put(v, configuration);
+;;             configuration = Configuration.UNKNOWN;
+;;         }
+;;     }
+
+;;     /**
 
 
 (def funcitonlist {
@@ -231,8 +329,8 @@ case '\\':
 
 
 
-(for [meth (.getMethods Parser)
-      :let [name (.getName meth)]]
-  name)
+;; (for [meth (.getMethods Parser)
+;;       :let [name (.getName meth)]]
+;;   name)
 
-(println .getMethods CharBuffer)
+;; (println .getMethods CharBuffer)
