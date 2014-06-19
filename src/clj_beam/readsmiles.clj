@@ -38,15 +38,22 @@
   {
    :sqs  (p/fnk [smi] (string->keys smi))
    :atms (p/fnk [sqs] (into [] (map symbol->Atom sqs)))
-   :bnds (p/fnk [sqs] (str "needs to be done"))
-   :g    (p/fnk [atms] {:atoms atms } )})
 
-; need:
-; 1: find isotopes
-; 2: find charges
-; 2: find find branches
-; 3: allow bonding between branch and moelcuel before it
-; 4: some global state to avoid doubling up
+   ; need:
+   ; 1: find isotopes
+   ; 2: find charges
+   ; 2: find find branches
+   ; 3: allow bonding between branch and moelcuel before it
+   ; 4: some global state to avoid doubling up
+
+   :sbnds (p/fnk [sqs] (detect-singlebonds sqs))
+   :dbnds (p/fnk [sqs] (detect-doublebonds sqs))
+   :tbnds (p/fnk [sqs] (detect-triplebonds sqs))
+   :bnds (p/fnk [sqs] (str "needs to be done"))
+   :g    (p/fnk [atms sbonds dbonds tbonds]
+                {:atoms  [atms]
+                 :bonds  [ stms sbonds dbonds tbonds ]})})
+
 
 
 ;; Funcitons
@@ -81,7 +88,7 @@
         :else "There is a problem" ))))
 
 
-(defn detect-single-bonds
+(defn detect-singlebonds
   "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
    [charvect]
    (let [ ;keep track of adjacent indeces
