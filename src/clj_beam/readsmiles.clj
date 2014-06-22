@@ -47,20 +47,20 @@
 (def readsmiles
   "A graph specifying the parsing of a smiles string"
   {
-   ;get Seq from strings Note: will need to adopt this for stremaing and from strings due to
-   ; issue with backspace character
+   ; the first three funciton will convert the string to clojure Seqs, then look for
+   ; bracketed and parenthesized portions of the Sequence.
    :sqs    (p/fnk [smi] (string->keys smi))
-   ;use Seq to find branches
    :prnth  (p/fnk [sqs] (getparenthesized sqs))
      ; inside parenthesis are branches
      ;  order of operation is to: determine nesting and then add atoms and
-   ;use Seq to find brackets`
    :brckt  (p/fnk [sqs] (getbracketed sqs))
      ; inside brackets molecules must explicity specify charge and Hydrogens and they can also specify isotope
      ; search order: charge, hydrogens, isotope
 
+   ; bracketed atoms must be searched for their information
+   :brcktatms (p/fnk [sqs brckt] (bracketedatoms brckts))
    ;add nonbracketed atoms
-   :nbatms (p/fnk [sqs brckt] ((let [;get index of all bracketed atoms, and use the rest fot defining atoms
+   :nbatms (p/fnk [sqs brckt] ((let [;get index of all bracketed atoms, and use the rest for defining atoms
                                      bracketed    (concat (map #(range (first %) (+ 1 (second %))) (keys brckt)))
                                      notbracketed (cset/difference bracketed (range (count sqs)))]
                                      (into [] (map symbol->Atom sqs)))))
