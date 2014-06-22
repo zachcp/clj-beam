@@ -8,20 +8,20 @@
 
 ; example Strings to pick out
 ; OH3+ 2H 235U C@@H C@H I- Na+ Br- H+ Fe+2 OH- Fe++ OH3+ NH4+
-
 ; java regex reference here:
 ; http://www.tutorialspoint.com/java/java_regular_expressions.htm
 
 (def examples ["OH3+" "Fe+++" "35Cl:classinfo" "27Fe+2" "2H" "235U" "C@@H" "C@H" "I-" "I-2" "Na+" "Br-" "H+" "Fe+2" "OH-" "Fe++" "OH3+" "NH4+"])
 
 (defn bracketatominfo [a]
-  "a bracketed   atom can may have the followinwg:
-     isotope:    a nubmer before the symbol
-     symbol:     the atomic symbol
-     chirality:  for chiral centers
-     protons:    H with an optional digit after
-     charge:     multiple +/- with optional digit
-     class:      optional field to specify extra information"
+  "a bracketed   atom can may have the following:
+      isotope:    a nubmer before the symbol
+      symbol:     the atomic symbol
+      chirality:  for chiral centers
+      protons:    H with an optional digit after
+      charge:     multiple +/- with optional digit
+      class:      optional field to specify extra information
+  return a map with atom information"
   (let [;get basic charge, proton, and isotope information
         element   (let  [ el (re-seq #"(?i)[abcdefgijklmnopqrstuvmwyz]+" a) ]
                     (if (nil? el)  "H" el)) ;pattern excludes "H" for ease. add it back if necessary
@@ -32,33 +32,30 @@
         chargenum (first (map read-string (re-find #"[+-](\d)" a)))
         protons   (re-seq #"[H]+" a)
         protnum   (second ( map read-string (re-find #"[H](\d)" a)))
-        atomclass (re-seq #":(?i)(\w+)" a)
+        atomclass (last (re-seq #":(?i)(\w+)" a))
 
-        ;resolve ambiguities
+        ;resolve ambiguities with charge and protons. this could probably be handled
+        ;better with better knowldege of regex.
         fin_charge (cond
                      chargenum chargenum
                      charge  ( if (= (first charge) \+)
                                   (count charge)
                                   (- (count charge)))
-                    :else 0)
+                     :else 0)
 
         fin_protons (cond
-                     protnum protnum
-                     protons 1
-                    :else 0)
-        ]
+                       protnum protnum
+                       protons 1
+                       :else 0)]
 
-    ;[a element isotope chiral chiralH charge chargenum fin_charge protons protnum atomclass]
-
-
-     { :element   (first element)
+    { :element   (first element)
        :isotope   isotope
        :charge    fin_charge
        :hydrogens fin_protons
        :atomclass atomclass }
 
-;    [a protons protnum]
-
+;[a element isotope chiral chiralH charge chargenum fin_charge protons protnum atomclass]
+;[a protons protnum]
     ))
 
 

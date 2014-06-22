@@ -30,7 +30,8 @@
    [plumbing.fnk.pfnk :as pfnk :include-macros true]
    [plumbing.graph :as graph :include-macros true]
    [plumbing.map :as map]
-   [clj-beam.schemas :as schemas]))
+;   [clj-beam.schemas :as schemas]
+   [clj-beam.regex :only bracketatominfo]))
 
 ;;; Master Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,7 +59,7 @@
      ; search order: charge, hydrogens, isotope
 
    ; bracketed atoms must be searched for their information
-   :brcktatms (p/fnk [sqs brckt] (bracketedatoms brckts))
+   :brcktatms (p/fnk [sqs brckt] (map bracketatominfo brckts))
    ;add nonbracketed atoms
    :nbatms (p/fnk [sqs brckt] ((let [;get index of all bracketed atoms, and use the rest for defining atoms
                                      bracketed    (concat (map #(range (first %) (+ 1 (second %))) (keys brckt)))
