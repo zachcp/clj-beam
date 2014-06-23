@@ -59,6 +59,11 @@
    :order  [Bond]
    :size   long })
 
+(def Arangement
+  "Arrangements are used to specify the atoms that each atom is connected to"
+  { [s/Int] [s/Int] })
+
+
 
 ;; Prismatic Graph-based Functions for Creating Molecules from Smiles Strings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -105,53 +110,30 @@
     :else "There is a prbolem" ))
 
 
-(def elementmap {
-  :* :Unknown    :Br :Bromine   :B  :Boron
-  :Cl :Chlorine  :C :Carbon     :N :Nitrogen
-  :O :Oxygen     :P :Phosphorus :S :Sulfur
-  :F :Fluorine   :I :Iodine     :b :Boron
-  :c :Carbon     :n :Nitrogen   :o :Oxygen
-  :p :Phosphorus :s :Sulfur     :H :Hydrogen
-  :D :DEUTERIUM  :T :TRITIUM })
 
 
+;; ;; Near Literal Translation of the Parser
+;; (defrecord parser [stack graph ringbonds arrangement configurations start bond openrings strict])
+;; (defrecord graph [atoms edges topologies order size delocalized])
 
-(def smileseager (graph/compile readsmiles))
-(:g  (smileseager {:smi "CCCC"}))
+;; (defn baseparser []
+;;   "Starting Point for Parsing"
+;;    (parser.
+;;     (into [] ( range 10)) ;stack
+;;     (graph. [] ;atoms
+;;             [] ;edges
+;;             [] ;topologies
+;;             0  ;order;size
+;;             1
+;;             :Yes) ;graph
 
-(def assemblesmiles
-  "A graph specifying how to assemble the process"
-  {:smi (p/fnk [smi] (map charmpa ))})
-
-(def assignfunctions
-  "A graph specifying which smiles character goes with which function"
-  {:smi (p/fnk [smi] (map charmpa ))})
-
-
-(defn in?
-  "true if seq contains elm"
-  [seq elm]
-  (some #(= elm %) seq))
-
-(defn notin?
-  "tru if seq does not contian element"
-  [seq elm]
-  (not (in? seq elm)))
-
-(into [] (range 10))
-
-
-
-
-
-
-;; Near Literal Translation of the Parser
+;;     ))
 
 (def baseparser
-  {:stack (into [](range 10))
+  {:stack '(1 2 3 4 5 6 7 8 9 10)
    :graph basegraph
    :ringbonds [] ;list of rings
-   :arrangement {:1 :2}
+   :arrangement {}
    :configurations "none"
    :start #()
    :bond :IMPLICIT
@@ -166,22 +148,84 @@
     :size   0
     :delocalized :True})
 
-(into () (range 10))
-(pop  (into [] (range 10)))
-(pop '(1 2 3 4 5 6 7 8 9 10))
-(range 10)
-(def a (range 10))
-(pop 'a)
+(pop  '(1 2 3 4 5 6 7 8 9 10))
+(peek '(1 2 3 4 5 6 7 8 9 10))
+(pop (range))
 
-baseparser
-(assoc baseparser :bond :True)
 
-(def a (assoc-in baseparser [:graph :atoms 0] {:element :unknown}  ))
+(defn addatom [symb parser idx atomtype]
+  ;parser.Java line 265
+  ;grapho.Java line 108
+
+  ;add atom
+  (assoc-in parser [:graph :atoms idx ] {:element (symb elementmap) :aromatic atomtype} )
+
+  ;get bond information and updae bond and association information
+  (let [ v ( - (:order(:graph parser)) 1) ;order
+         l (count (:stack parser))
+         u (peek  (:stack parser))]
+
+    (println v l u)
+    ;add bond
+    (when (not= (:bond parser) :Bond.DOT) ;add a bond
+          (assoc-in parser [:graph :edge idx] [u v (:bond parser)] ))
+    ;update arrangements
+    (when (in? (keys (:arrangement parser)) u)
+          (let [c (count (get (:arrangement parser) u))]
+             (assoc-in parser [:arrangement u (inc c) ] v )
+            ))
+    ;Update the stack
+    (let [stack (:stack parser)]
+      (assoc parser :stack (cons v stack)))
+    ;reset the bond type
+    (assoc parser :bond :bond.IMPLICIT))
+
+  parser)
+
+ (def a  (addatom :Br baseparser 0 :aromatic))
+ (def b  (addatom :Br a 0 :aromatic))
+
+ b
 
 a
-(assoc-in a [:graph :atoms ] [{:element :unknown}]  )
+(assoc-in a
+(cons 1 '(2 3 4))
+   private LocalArrangement createArrangement(int u) {
+        LocalArrangement la = arrangement.get(u);
+        if (la == null) {
+            la = new LocalArrangement();
+            for (Edge e : g.edges(stack.peek()))
+                la.add(e.other(u));
+            arrangement.put(u, la);
+        }
+        return la;
+    }
 
-(:graph baseparser)
+
+      private void addAtom(Atom a) {
+        int v = g.addAtom(a);
+
+if (!stack.empty()) {
+            int u = stack.pop();
+            if (bond != Bond.DOT)
+                g.addEdge(new Edge(u, v, bond));
+            else
+                start.add(v); // start of a new run
+            if (arrangement.containsKey(u))
+                arrangement.get(u).add(v);
+
+        }
+        stack.push(v);
+        bond = Bond.IMPLICIT;
+
+        // configurations used to create topologies after parsing
+        if (configuration != Configuration.UNKNOWN) {
+            configurations.put(v, configuration);
+            configuration = Configuration.UNKNOWN;
+        }
+    }
+
+
 
 (defn parsesmiles [parser symb]
   ;try a literal translation ofhte parsing function
@@ -190,6 +234,7 @@ a
       (in? [:Br :B :Cl :C :N :O :P :S :F :I :H :D :T] symb )
           (;add an atom to the atomlist
            (assoc-in parser [:graph :atoms (inc idx)] {:element (symb elementmap) :aromatic :No})
+           (addatom parser idx atomtype)
            ;add an edge
            (let [v (:order(:graph parser))
                  u (pop (:stack parser))
