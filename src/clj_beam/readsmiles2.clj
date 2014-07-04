@@ -152,45 +152,33 @@
                        {:atom1 (first (first bond)) :atom2 (first (second bond)) :order :Single :aromatic :No})]
           (into [] (map singlebond bonds))))
 
-(defn detect-rings
-  "Detect Ring Indices by Location of the Numbers: Note Need to check for aromatic or not!!!"
-   [charvect]
-     (let [i     (range 15)  ;assuming arbitrary maximum number of rings
-           locs  (fn [x] (get-indices (keyword (str x)) charvect))
-           locs1 (map locs i)
-           ;note there couls be More than 2 if there are many nubmers
-           bonds (filter #(= (count %) 2) locs1)]
+(defn rings    [atomvect]
+  "Bonds from Rings"
+   (let [nums  (filter #(int? (second  %)) atomvect) ;getrings numbers
 
-         (for [b bonds]
-             {:atom1 (- (first b) 1) :atom2 (- (second b) 1)}  )))
+         ]
+     ;add rings based on numbers check the
+         )
 
-(defn detect-doublebonds
+(defn doublebonds  [atomvect]
   "Detect Double Bonds: Note that this method does not see things in brackets"
-   [charvect]
-     (let [dbs (get-indices := charvect)]
-         (for [d dbs]
-             {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
+     (let [b  (filter #(=  := (second  %)) atomvect) ]
+       ;check for being left of a parenthesis
+       )
 
-(defn detect-triplebonds
+(defn triplebonds  [atomvect]
   "Detect Triple Bonds: Note that this method doe snot see things in brackets"
-   [charvect]
-     (let [dbs (get-indices :# charvect)]
-         (for [d dbs]
-             {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
+     (let [b  (filter #(=  := (second  %)) atomvect) ]
+       ;check for being left of a parenthesis
+       ))
 
-(defn non-element-indices
-  "Get all of the non-Atomic character indices"
-  [charvector]
-  (let [c [:* :\ :/ :[ :] :( :) :+  :.  :@ ] ]
-   (into {}
-     (for [s c]
-       [s (get-indices s charvector)]))))
+(defn bondparenthesis  [atomvect]
+  "Detect bonds across parentheses"
+     (let []
+       ;check all nested and long bond
+       ))
 
-(map-indexed vector (readsmiles smi12))
-(def bb (map-indexed vector (readsmiles (first smiles))))
-(def cc (partition 2 1 bb))
-(def dd (filter #(and (map? (second (first  %)))
-                      (map? (second (second %)))) cc))
+
 
 (def smiles (string/split  (slurp "data/smiles.txt") #"\n"))
 (def smi12 (nth smiles 12))
