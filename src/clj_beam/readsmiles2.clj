@@ -1,4 +1,4 @@
-(ns clj-beam.readsmiles
+(ns clj-beam.readsmiles2
   (:gen-class)
   (:require
    [clojure.set :as cset]
@@ -7,32 +7,37 @@
    [plumbing.core :as p :include-macros true]
    [plumbing.fnk.pfnk :as pfnk :include-macros true]
    [plumbing.graph :as graph :include-macros true]
-   [plumbing.map :as map]
-;   [clj-beam.schemas :as schemas]
-   [clj-beam.regex :only bracketatominfo]
-;   [clj-beam.opensmiles :only element_symbols]
-   ))
+   [plumbing.map :as map]))
 
+
+(def elementmap {
+  :* :Unknown    :Br :Bromine   :B  :Boron
+  :Cl :Chlorine  :C :Carbon     :N :Nitrogen
+  :O :Oxygen     :P :Phosphorus :S :Sulfur
+  :F :Fluorine   :I :Iodine     :b :Boron
+  :c :Carbon     :n :Nitrogen   :o :Oxygen
+  :p :Phosphorus :s :Sulfur     :H :Hydrogen
+  :D :DEUTERIUM  :T :TRITIUM })
 
 (defn string->Atom [smi]
   "take a smiles string and return a list of atoms or keyword characters
-
     (string->Atom 'CCc1')
        ( {:element :Carbon, :aromatic :No, :index 0}
          :(
          {:element :Carbon, :aromatic :No, :index 2}
          :)
          {:element :Oxygen, :aromatic :No, :index 4})"
-  (let [part   (partition 2 1 '(:Padding) smi)   ;partition into characters and use :Padding
-        filt1  (filter #(not= (first %) \r) part) ;BR abd Cl are special cases
-        filt2  (filter #(not= (first %) \r) filt1)
-        smivec (vec (map conv filt2))
-        indx   (range (count smivec))
-        in?    (fn [seq elm] (some #(= elm %) seq))
+  (let [in?    (fn [seq elm] (some #(= elm %) seq))
         conv   (fn [x] (cond
                        ( = (apply str x) "Br") :Br
                        ( = (apply str x) "Cl") :Cl
-                       :else (keyword (str (first x))))) ]
+                       :else (keyword (str (first x)))))
+
+        part   (partition 2 1 '(:Padding) smi)   ;partition into characters and use :Padding
+        filt1  (filter #(not= (first %) \r) part) ;BR abd Cl are special cases
+        filt2  (filter #(not= (first %) \r) filt1)
+        smivec (vec (map conv filt2))
+        indx   (range (count smivec))]
 
     (for [ idx indx ]
        (let [ sym (get smivec idx)]
@@ -44,7 +49,6 @@
           (in? [:H :D :T] sym )
                {:element (sym elementmap) :aromatic :No}
           :else sym )))))
-
 
 (defn bracketatominfo [a]
   "a bracketed   atom can may have the following:
@@ -75,7 +79,6 @@
                                   (count charge)
                                   (- (count charge)))
                      :else 0)
-
         fin_protons (cond
                        protnum protnum
                        protons 1
@@ -96,17 +99,100 @@
         splitsmi (partition-all 2 (string/split smi brackets) ) ;splits on brackets every other sequence was bracketed
         f  (map first splitsmi)
         s  (remove nil? (map second splitsmi))
-        inter (fn [a b] (if (= (count a) (count b))
-                            (interleave a b)
-                            (cons (first a) (interleave b (rest a)))))]
+        inter (fn [a b]
+                (if (= (count a) (count b))
+                    (interleave a b)
+                    (cons (first a) (interleave b (rest a)))))]
      (if startswithbracket
        (let [fm (map bracketatominfo f)
              rm (map string->Atom s)]
-                (flatten (inter fm rm )))
+                (into [] (flatten (inter fm rm ))))
        (let [fm (map string->Atom f)
              rm (map bracketatominfo s)]
-                (flatten (inter fm rm ))))))
+                (into [] (flatten (inter fm rm )))))))
+
+(defn getbonds [atomlist]
+  "Bonds From Atom List"
+  (let [mapindexed  (into [] (map-indexed vector atomlist))
+        doublebonds (filter #(= := (second %)) mapindexed)
+        triplebonds (filter #(= :# (second %)) mapindexed)]
+    (do
+      (println triplebonds))
+    ;(atombefore 5)
+    mapindexed
+    ))
+
+(defn atombefore [idx vect]
+  "for a given index of a vector contianing an indexed vector
+  find the first previous vector contianing a map/atom "
+  (let [v2 (rseq (subvec vect 0 idx))]
+       (first (drop-while #(not map? (second %))))))
+
+(defn atomafter [idx vect]
+  "for a given index of a vector containing an indexed vector
+  find the next vector contianing a map/atom "
+  (let [v2 (subvec vect 0 idx)]
+       (first (drop-while #(not map? (second %))))))
+
+(defn makebond [bondtype pos vect]
+  "create bond"
+   (let [ab (atombefore pos vect)
+         aa (atomafter  pos vect)]
+     ()))
+
+; bonds are all explicit double and triple bonds as well as implicit
+;
+
+(defn singlebonds [atomvect]
+  "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
+   (let [ part  (partition 2 1 atomvect)
+          bonds (filter #(and (map? (second (first  %)))
+                              (map? (second (second %)))) part)
+          singlebond (fn [bond]
+                       {:atom1 (first (first bond)) :atom2 (first (second bond)) :order :Single :aromatic :No})]
+          (into [] (map singlebond bonds))))
+
+(defn detect-rings
+  "Detect Ring Indices by Location of the Numbers: Note Need to check for aromatic or not!!!"
+   [charvect]
+     (let [i     (range 15)  ;assuming arbitrary maximum number of rings
+           locs  (fn [x] (get-indices (keyword (str x)) charvect))
+           locs1 (map locs i)
+           ;note there couls be More than 2 if there are many nubmers
+           bonds (filter #(= (count %) 2) locs1)]
+
+         (for [b bonds]
+             {:atom1 (- (first b) 1) :atom2 (- (second b) 1)}  )))
+
+(defn detect-doublebonds
+  "Detect Double Bonds: Note that this method does not see things in brackets"
+   [charvect]
+     (let [dbs (get-indices := charvect)]
+         (for [d dbs]
+             {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
+
+(defn detect-triplebonds
+  "Detect Triple Bonds: Note that this method doe snot see things in brackets"
+   [charvect]
+     (let [dbs (get-indices :# charvect)]
+         (for [d dbs]
+             {:atom1 (- d 1) :atom2 (+ d 1) :order :Double}  )))
+
+(defn non-element-indices
+  "Get all of the non-Atomic character indices"
+  [charvector]
+  (let [c [:* :\ :/ :[ :] :( :) :+  :.  :@ ] ]
+   (into {}
+     (for [s c]
+       [s (get-indices s charvector)]))))
+
+(map-indexed vector (readsmiles smi12))
+(def bb (map-indexed vector (readsmiles (first smiles))))
+(def cc (partition 2 1 bb))
+(def dd (filter #(and (map? (second (first  %)))
+                      (map? (second (second %)))) cc))
 
 (def smiles (string/split  (slurp "data/smiles.txt") #"\n"))
 (def smi12 (nth smiles 12))
-(map readsmiles2 smiles)
+(map readsmiles smiles)
+smiles
