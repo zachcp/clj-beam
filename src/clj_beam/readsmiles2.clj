@@ -19,7 +19,7 @@
   :p :Phosphorus :s :Sulfur     :H :Hydrogen
   :D :DEUTERIUM  :T :TRITIUM })
 
-(defn string->Atom [smi]
+(defn- string->Atom [smi]
   "take a smiles string and return a list of atoms or keyword characters
     (string->Atom 'CCc1')
        ( {:element :Carbon, :aromatic :No, :index 0}
@@ -50,7 +50,7 @@
                {:element (sym elementmap) :aromatic :No}
           :else sym )))))
 
-(defn bracketatominfo [a]
+(defn- bracketatominfo [a]
   "a bracketed   atom can may have the following:
       isotope:    a nubmer before the symbol
       symbol:     the atomic symbol
@@ -111,7 +111,7 @@
              rm (map bracketatominfo s)]
                 (into [] (flatten (inter fm rm )))))))
 
-(defn getbonds [atomlist]
+(defn- getbonds [atomlist]
   "Bonds From Atom List"
   (let [mapindexed  (into [] (map-indexed vector atomlist))
         doublebonds (filter #(= := (second %)) mapindexed)
@@ -122,19 +122,19 @@
     mapindexed
     ))
 
-(defn atombefore [idx vect]
+(defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
   find the first previous vector contianing a map/atom "
   (let [v2 (rseq (subvec vect 0 idx))]
        (first (drop-while #(not map? (second %))))))
 
-(defn atomafter [idx vect]
+(defn- atomafter [idx vect]
   "for a given index of a vector containing an indexed vector
   find the next vector contianing a map/atom "
   (let [v2 (subvec vect 0 idx)]
        (first (drop-while #(not map? (second %))))))
 
-(defn makebond [bondtype pos vect]
+(defn- makebond [bondtype pos vect]
   "create bond"
    (let [ab (atombefore pos vect)
          aa (atomafter  pos vect)]
@@ -143,7 +143,7 @@
 ; bonds are all explicit double and triple bonds as well as implicit
 ;
 
-(defn singlebonds [atomvect]
+(defn- singlebonds [atomvect]
   "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
    (let [ part  (partition 2 1 atomvect)
           bonds (filter #(and (map? (second (first  %)))
@@ -152,7 +152,7 @@
                        {:atom1 (first (first bond)) :atom2 (first (second bond)) :order :Single :aromatic :No})]
           (into [] (map singlebond bonds))))
 
-(defn rings    [atomvect]
+(defn- rings    [atomvect]
   "Bonds from Rings"
    (let [nums  (filter #(int? (second  %)) atomvect) ;getrings numbers
 
@@ -160,19 +160,19 @@
      ;add rings based on numbers check the
          )
 
-(defn doublebonds  [atomvect]
+(defn- doublebonds  [atomvect]
   "Detect Double Bonds: Note that this method does not see things in brackets"
      (let [b  (filter #(=  := (second  %)) atomvect) ]
        ;check for being left of a parenthesis
        )
 
-(defn triplebonds  [atomvect]
+(defn- triplebonds  [atomvect]
   "Detect Triple Bonds: Note that this method doe snot see things in brackets"
      (let [b  (filter #(=  := (second  %)) atomvect) ]
        ;check for being left of a parenthesis
        ))
 
-(defn bondparenthesis  [atomvect]
+(defn- bondparenthesis  [atomvect]
   "Detect bonds across parentheses"
      (let []
        ;check all nested and long bond
