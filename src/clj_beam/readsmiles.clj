@@ -31,7 +31,9 @@
    [plumbing.graph :as graph :include-macros true]
    [plumbing.map :as map]
 ;   [clj-beam.schemas :as schemas]
-   [clj-beam.regex :only bracketatominfo]))
+   [clj-beam.regex :only bracketatominfo]
+;   [clj-beam.opensmiles :only element_symbols]
+   ))
 
 ;;; Master Function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,7 +53,7 @@
    ; the first three funciton will convert the string to clojure Seqs, then look for
    ; bracketed and parenthesized portions of the Sequence.
    :sqs    (p/fnk [smi] (string->keys smi))
-   :prnth  (p/fnk [sqs] (getparenthesized sqs))
+   ;:prnth  (p/fnk [sqs] (getparenthesized sqs))
      ; inside parenthesis are branches
      ;  order of operation is to: determine nesting and then add atoms and
    :brckt  (p/fnk [sqs] (getbracketed sqs))
@@ -229,7 +231,17 @@
                    { [f r ] (subvec charvector f (+ r 1)) } ))))
 
 
+(element_symbols)
 
+(def a
+  (into [] (map #(= "A" %) ["A" "B"])))
+
+(or (map #(= "A" %) ["A" "B" "C" "D"]))
+
+
+
+(if-some [a false ] "yes" "no" )
+(when-some a "yes" "no" )
 ;; Scratch
 (string->keys smi3)
 sequences2
