@@ -3,11 +3,7 @@
   (:require
    [clojure.set :as cset]
    [clojure.string :as string]
-   [schema.core :as s]
-   [plumbing.core :as p :include-macros true]
-   [plumbing.fnk.pfnk :as pfnk :include-macros true]
-   [plumbing.graph :as graph :include-macros true]
-   [plumbing.map :as map]))
+   [schema.core :as s]))
 
 
 (def elementmap {
@@ -84,11 +80,14 @@
                        protons 1
                        :else 0)]
 
+    (do
+      (println chiral chiralH))
     {  :element   (first element)
        :isotope   isotope
        :charge    fin_charge
        :hydrogens fin_protons
-       :atomclass atomclass }
+       :atomclass atomclass
+       :chiral    (if chiralH (first chiralH) (first chiral))}
     ))
 
 
@@ -113,14 +112,55 @@
 
 (defn- getbonds [atomlist]
   "Bonds From Atom List"
-  (let [mapindexed  (into [] (map-indexed vector atomlist))
-        doublebonds (filter #(= := (second %)) mapindexed)
-        triplebonds (filter #(= :# (second %)) mapindexed)]
-    (do
-      (println triplebonds))
-    ;(atombefore 5)
-    mapindexed
+  (let [mapindexed (into [] (map-indexed vector atomlist))
+        dblocs     (filter #(= := (first %)) mapindexed)
+        tblocs     (filter #(= :# (first %)) mapindexed)
+        fb         (filter #(= :( (first %)) mapindexed)
+        rb         (filter #(= :) (first %)) mapindexed)
+        getsinglebonds (fn [a b] (if (and (map? (second a))
+                                          (map? (second b)))
+                                     {:order :Single
+                                      :aromatic :No
+                                      :type  :Dot
+                                      :atoms [ (first a) (first b)] }
+                                     []
+                                   ))
+
+        ;; make the general for all of the bond orders
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        getdoublebonds (fn [x] if (and (atombefore x  mapindexed)
+                                       (atomafter  x  mapindexed))
+                               (bond :double)
+                               [])
+        gettriplebonds (fn [x] if (and (atombefore x  mapindexed)
+                                       (atomafter  x  mapindexed))
+                               (bond :triple)
+                               [])
+
+        nestedbonds    (fn [x] if (and (atombefore x  mapindexed)
+                                       (atomafter  x  mapindexed))
+                               (bond :triple)
+                               [])
+
+        ;; combine bonds
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        singlebonds (filter map?
+                (map #(apply getsinglebonds %) (partition 2 1 mapindexed)))
+
+        doublesbonds (filter map?
+                (map #(apply getdoublebonds %) (partition 2 1 mapindexed)))
+
+        triplebonds (filter map?
+                (map #(apply gettriplebonds %) (partition 2 1 mapindexed)))
+
+
+                             ]
+
+    (into [] (singlebonds doublebonds triplebonds) )
     ))
+
+(getbonds smitest)
+
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
@@ -154,17 +194,17 @@
 
 (defn- rings    [atomvect]
   "Bonds from Rings"
-   (let [nums  (filter #(int? (second  %)) atomvect) ;getrings numbers
+   (let [nums  (filter #(integer? (second  %)) atomvect) ;getrings numbers
 
          ]
      ;add rings based on numbers check the
-         )
+         "a"))
 
 (defn- doublebonds  [atomvect]
   "Detect Double Bonds: Note that this method does not see things in brackets"
      (let [b  (filter #(=  := (second  %)) atomvect) ]
        ;check for being left of a parenthesis
-       )
+       ))
 
 (defn- triplebonds  [atomvect]
   "Detect Triple Bonds: Note that this method doe snot see things in brackets"
@@ -184,3 +224,7 @@
 (def smi12 (nth smiles 12))
 (map readsmiles smiles)
 smiles
+smi12
+(def smitest (readsmiles smi12))
+smitest
+(getbonds smitest)
