@@ -137,7 +137,12 @@
                                (bond :triple)
                                [])
 
-        nestedbonds    (fn [x] if (and (atombefore x  mapindexed)
+        getnestedbonds  (fn [x] if (and (atombefore x  mapindexed)
+                                       (atomafter  x  mapindexed))
+                               (bond :triple)
+                               [])
+
+        getringbonds   (fn [x] if (and (atombefore x  mapindexed)
                                        (atomafter  x  mapindexed))
                                (bond :triple)
                                [])
@@ -153,6 +158,12 @@
         triplebonds (filter map?
                 (map #(apply gettriplebonds %) (partition 2 1 mapindexed)))
 
+        nestedbonds (filter map?
+                (map #(apply getnestedbonds %) (partition 2 1 mapindexed)))
+
+        ringbonds (filter map?
+                (map #(apply getringbonds %) (partition 2 1 mapindexed)))
+
 
                              ]
 
@@ -164,7 +175,7 @@
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
-  find the first previous vector contianing a map/atom "
+  find the first previous vector containing a map/atom "
   (let [v2 (rseq (subvec vect 0 idx))]
        (first (drop-while #(not map? (second %))))))
 
