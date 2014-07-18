@@ -158,8 +158,7 @@
 
         doublebonds (map getdoublebonds (map first dblocs))
 
-        triplebonds (filter map?
-                (map #(apply gettriplebonds %) (partition 2 1 mapindexed)))
+        triplebonds (map getdoublebonds (map first tblocs))
 
         nestedbonds (filter map?
                 (map #(apply getnestedbonds %) (partition 2 1 mapindexed)))
@@ -170,9 +169,7 @@
 
                              ]
 
-    ;(into [] (singlebonds doublebonds triplebonds) )
-    doublebonds
-    ;dblocs
+    (into [] (concat singlebonds doublebonds triplebonds))
     ))
 
 smitest
