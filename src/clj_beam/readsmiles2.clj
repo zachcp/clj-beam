@@ -113,10 +113,10 @@
 (defn- getbonds [atomlist]
   "Bonds From Atom List"
   (let [mapindexed (into [] (map-indexed vector atomlist))
-        dblocs     (filter #(= := (first %)) mapindexed)
-        tblocs     (filter #(= :# (first %)) mapindexed)
-        fb         (filter #(= :( (first %)) mapindexed)
-        rb         (filter #(= :) (first %)) mapindexed)
+        dblocs     (filter #(= := (second %)) mapindexed)
+        tblocs     (filter #(= :# (second %)) mapindexed)
+        fb         (filter #(= :( (second %)) mapindexed)
+        rb         (filter #(= :) (second %)) mapindexed)
         getsinglebonds (fn [a b] (if (and (map? (second a))
                                           (map? (second b)))
                                      {:order :Single
@@ -128,32 +128,35 @@
 
         ;; make the general for all of the bond orders
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        getdoublebonds (fn [x] if (and (atombefore x  mapindexed)
-                                       (atomafter  x  mapindexed))
-                               (bond :double)
-                               [])
-        gettriplebonds (fn [x] if (and (atombefore x  mapindexed)
-                                       (atomafter  x  mapindexed))
-                               (bond :triple)
-                               [])
+        getdoublebonds (fn [x] (let [ab (atombefore x  mapindexed)
+                                     aa (atomafter  x  mapindexed)]
 
-        getnestedbonds  (fn [x] if (and (atombefore x  mapindexed)
-                                       (atomafter  x  mapindexed))
-                               (bond :triple)
-                               [])
+                                   {:order :Double
+                                    :aromatic :No
+                                    :type  :Dot
+                                    :atoms [ (first ab) (first aa)] }))
+        gettriplebonds (fn [x] (let [ab (atombefore x  mapindexed)
+                                     aa (atomafter  x  mapindexed)]
 
-        getringbonds   (fn [x] if (and (atombefore x  mapindexed)
-                                       (atomafter  x  mapindexed))
-                               (bond :triple)
-                               [])
+                                   {:order :Triple
+                                    :aromatic :No
+                                    :type  :Dot
+                                    :atoms [ (first ab) (first aa)] }))
+
+        getnestedbonds  (fn [x] "Fix This"
+                          )
+
+        getringbonds   (fn [x] "Fix This")
 
         ;; combine bonds
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         singlebonds (filter map?
                 (map #(apply getsinglebonds %) (partition 2 1 mapindexed)))
 
-        doublesbonds (filter map?
-                (map #(apply getdoublebonds %) (partition 2 1 mapindexed)))
+        ;doublebonds (filter map?
+        ;        (map #(apply getdoublebonds %) (partition 2 1 mapindexed)))
+
+        doublebonds (map getdoublebonds (map first dblocs))
 
         triplebonds (filter map?
                 (map #(apply gettriplebonds %) (partition 2 1 mapindexed)))
@@ -167,23 +170,43 @@
 
                              ]
 
-    (into [] (singlebonds doublebonds triplebonds) )
+    ;(into [] (singlebonds doublebonds triplebonds) )
+    doublebonds
+    ;dblocs
     ))
 
+smitest
 (getbonds smitest)
+
+(map getdoublebonds (map first (getbonds smitest)))
+
+(map getdoublebonds [3 4 5])
+
+
+(defn getdoublebonds [x]
+  (let [mapindexed (into [] (map-indexed vector smitest))
+        ab (atombefore x  mapindexed)
+        aa (atomafter  x  mapindexed)]
+
+   {:order :Double
+    :aromatic :No
+    :type  :Dot
+    :atoms [ (first ab) (first aa)] }))
+
+(map first dblocs)
 
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
   find the first previous vector containing a map/atom "
   (let [v2 (rseq (subvec vect 0 idx))]
-       (first (drop-while #(not map? (second %))))))
+       (first (drop-while #(not (map? (second %))) v2))))
 
 (defn- atomafter [idx vect]
   "for a given index of a vector containing an indexed vector
   find the next vector contianing a map/atom "
   (let [v2 (subvec vect 0 idx)]
-       (first (drop-while #(not map? (second %))))))
+       (first (drop-while #(not (map? (second %)))  v2))))
 
 (defn- makebond [bondtype pos vect]
   "create bond"
