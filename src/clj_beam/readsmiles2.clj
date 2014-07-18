@@ -153,9 +153,6 @@
         singlebonds (filter map?
                 (map #(apply getsinglebonds %) (partition 2 1 mapindexed)))
 
-        ;doublebonds (filter map?
-        ;        (map #(apply getdoublebonds %) (partition 2 1 mapindexed)))
-
         doublebonds (map getdoublebonds (map first dblocs))
 
         triplebonds (map getdoublebonds (map first tblocs))
@@ -164,34 +161,13 @@
                 (map #(apply getnestedbonds %) (partition 2 1 mapindexed)))
 
         ringbonds (filter map?
-                (map #(apply getringbonds %) (partition 2 1 mapindexed)))
-
-
-                             ]
+                (map #(apply getringbonds %) (partition 2 1 mapindexed)))]
 
     (into [] (concat singlebonds doublebonds triplebonds))
     ))
 
 smitest
 (getbonds smitest)
-
-(map getdoublebonds (map first (getbonds smitest)))
-
-(map getdoublebonds [3 4 5])
-
-
-(defn getdoublebonds [x]
-  (let [mapindexed (into [] (map-indexed vector smitest))
-        ab (atombefore x  mapindexed)
-        aa (atomafter  x  mapindexed)]
-
-   {:order :Double
-    :aromatic :No
-    :type  :Dot
-    :atoms [ (first ab) (first aa)] }))
-
-(map first dblocs)
-
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
