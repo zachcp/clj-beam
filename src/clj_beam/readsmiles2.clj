@@ -27,11 +27,12 @@
         conv   (fn [x] (cond
                        ( = (apply str x) "Br") :Br
                        ( = (apply str x) "Cl") :Cl
+                       ( re-find #"\d" (str (first x))) (Integer/parseInt (str (first x )))
                        :else (keyword (str (first x)))))
 
         part   (partition 2 1 '(:Padding) smi)   ;partition into characters and use :Padding
         filt1  (filter #(not= (first %) \r) part) ;BR abd Cl are special cases
-        filt2  (filter #(not= (first %) \r) filt1)
+        filt2  (filter #(not= (first %) \l) filt1)
         smivec (vec (map conv filt2))
         indx   (range (count smivec))]
 
@@ -115,6 +116,7 @@
   (let [mapindexed (into [] (map-indexed vector atomlist))
         dblocs     (filter #(= := (second %)) mapindexed)
         tblocs     (filter #(= :# (second %)) mapindexed)
+        rblocs     (filter #(integer? (second %)) mapindexed)
         fb         (filter #(= :( (second %)) mapindexed)
         rb         (filter #(= :) (second %)) mapindexed)
         getsinglebonds (fn [a b] (if (and (map? (second a))
@@ -164,10 +166,16 @@
                 (map #(apply getringbonds %) (partition 2 1 mapindexed)))]
 
     (into [] (concat singlebonds doublebonds triplebonds))
+    rblocs
     ))
 
+smiA
+(def smitest (readsmiles smiA))
+
 smitest
-(getbonds smitest)
+ (getbonds smitest)
+(char (name (second (second (getbonds smitest)))))
+
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
@@ -229,9 +237,15 @@ smitest
 
 (def smiles (string/split  (slurp "data/smiles.txt") #"\n"))
 (def smi12 (nth smiles 12))
+(def smiA (nth smiles 6))
+smiA
+
 (map readsmiles smiles)
 smiles
 smi12
-(def smitest (readsmiles smi12))
 smitest
 (getbonds smitest)
+
+(def a (map read-string "c1cccc1"))
+(integer? (second (map read-string (map str (seq "C1ccc1")))))
+
