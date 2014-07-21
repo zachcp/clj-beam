@@ -148,7 +148,12 @@
         getnestedbonds  (fn [x] "Fix This"
                           )
 
-        getringbonds   (fn [x] "Fix This")
+        getringbonds   (fn [dblocs]
+                         "Given an list of ring breakages, return bonds between them"
+                         )
+        getadjacentringbonds (fn [x]
+                               "Given an list of ring breakages, return the bonds not picked up by the singlebond function"
+                               )
 
         ;; combine bonds
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -169,13 +174,130 @@
     rblocs
     ))
 
-smiA
-(def smitest (readsmiles smiA))
+(defn- getindices [x coll]
+  "return the indeces of the collection whose value is x"
+  (map first
+     (filter #(= (second %) x)
+             (map-indexed vector coll))))
 
-smitest
- (getbonds smitest)
-(char (name (second (second (getbonds smitest)))))
+(defn- getsinglebonds [atomlist]
+  "returns single bonds from adjacent atoms"
+  (let [bonds (for [i (range (count atomlist))]
+                (cond (and (map? (nth atomlist i))
+                           (map? (nth atomlist (+ i 1))))
+                       {:order :Single
+                        :aromatic :No
+                        :type  :Dot
+                        :atoms [ i (+ i 1)]}))]
+    (filter #(not (nil? %)) bonds)))
 
+(defn- getdoublebonds [atomlist]
+  "returns double bonds from adjacent atoms
+   must take into account:
+        direct:   C=C
+        indirect: C(=O)
+        nested:   C(C)(=O)"
+  (let [dblocs   (getindices := atomlist)
+        checkmap (fn [x] (map? (nth x atomlist)))
+        direct?  (fn [x] (if (and (checkmap (inc x))
+                                 (checkmap (dec x)))
+                             true false ))
+        indirect? (fn [x] (if (and (checkmap (inc x))
+                                  (checkmap (dec (dec x))))
+                             true false ))]
+    (for [d dblocs]
+      (cond
+         (direct? d)   {:order :Double :atoms [(dec d) (inc d)] }
+         (indirect? d) {:order :Double :atoms [ (getnestedatomindex (dec d) coll 0 0) (inc d)]}))))
+
+(defn- gettriplebonds [atomlist]
+  "returns double bonds from adjacent atoms
+   must take into account:
+        direct:   C#C
+        indirect: C(#O)
+        nested:   C(C)(#O)"
+  (let [tblocs   (getindices :# atomlist)
+        checkmap (fn [x] (map? (nth x atomlist)))
+        direct?  (fn [x] (if (and (checkmap (inc x))
+                                 (checkmap (dec x)))
+                             true false ))
+        indirect? (fn [x] (if (and (checkmap (inc x))
+                                  (checkmap (dec (dec x))))
+                             true false ))]
+    (for [d tblocs]
+      (cond
+         (direct? d)   {:order :Double :atoms [(dec d) (inc d)] }
+         (indirect? d) {:order :Double :atoms [ (getnestedatomindex (dec d) coll 0 0) (inc d)]}))))
+
+(defn- getnestedatomindex [idx coll lb rb]
+  "return the atom location for an implicit, nested bond
+   examples:
+     CCN(CC)CC
+     CC(=O)O
+     NC(C)C(=O)O
+     CC(C)(C(=O)O)Oc1ccc(cc1)Cl
+     COc1cc(c(c2c1OCO2)OC)CC=C
+     Cc1ccccc1NC(=O)C(C)N2CCCC2
+     CC(=O)Oc1ccccc1C(=O)[O-]
+     c1cc(ccc1C(CC(=O)O)CN)Cl
+  x should initially be the position immedietly to the right of the closed right bracket"
+;;   (do
+;;     (println idx lb rb)
+;;     (println (= lb rb))
+;;     (println (= :( (nth coll idx) ))
+;;     (println (= :) (nth coll idx) )))
+  (cond
+     (< idx 0)
+       "Somethingwrong"
+     (and (= lb rb) (> rb 0))
+       idx
+     (= :( (nth coll idx))
+       (getnestedatomindex (dec idx) coll (inc lb) rb)
+     (= :) (nth coll idx))
+       (getnestedatomindex (dec idx) coll lb (inc rb))
+     :else (getnestedatomindex (dec idx) coll lb rb)))
+
+;; (defn getringlocations [atomlist]
+;;   "get ring locations by checking for the location of integers"
+;;   (.getIn)
+;;   )
+
+
+(defn- getbrokenringbonds [atomlist]
+  "Return Bonds from Broken rings and Single Bonds
+   For now just return the atom immedietely to the left of the integer.
+  ToDO: add use cases if there are multiple integers associated with the same atom"
+  (let [mapindexed (into [] (map-indexed vector atomlist))
+        ringlocs   (filter #(integer? (second %)) mapindexed)
+        matches    (for [x ringlocs y ringlocs
+                        :when (= (second x) (second y) )
+                        :while (not= (first x) (first y))]
+                        [x y]) ]
+      (for [[a b] matches]
+            (let [mi (min (first a) (first b))
+                  ma (max (first a) (first b))]
+               {:order :Single
+                :aromatic :No
+                :type  :Dot
+                :atoms [ (dec mi) (dec ma)]}
+              ))))
+
+
+(defn- getadjacentringbonds [atomlist]
+  "ring integers break up the detection of single rings find ring locations and add the bonds"
+   (let [mapindexed (into [] (map-indexed vector atomlist))
+         ringlocs   (filter #(integer? (second %)) mapindexed)]
+;     ringlocs))
+     (for [ [i n] ringlocs]
+        (cond
+            (>= i (- (count atomlist) 1))
+               nil
+            (and (map? (nth atomlist (inc i))) (map? (nth atomlist (dec i))))
+               {:order :Single
+                :aromatic :No
+                :type  :Dot
+                :atoms [ (dec i) (inc i )]}
+             :else "Problem!"  ))))
 
 (defn- atombefore [idx vect]
   "for a given index of a vector contianing an indexed vector
@@ -195,8 +317,35 @@ smitest
          aa (atomafter  pos vect)]
      ()))
 
+
+ (defn- getdoublebonds [x]
+   ""
+   (let [ab (atombefore x  mapindexed)
+         aa (atomafter  x  mapindexed)]
+
+       {:order :Double
+        :aromatic :No
+        :type  :Dot
+        :atoms [ (first ab) (first aa)] }))
+
+ (defn- gettriplebonds [x]
+   ""
+   (let [ab (atombefore x  mapindexed)
+         aa (atomafter  x  mapindexed)]
+
+       {:order :Triple
+        :aromatic :No
+        :type  :Dot
+        :atoms [ (first ab) (first aa)] }))
+
+getnestedbonds  (fn [x] "Fix This"
+                  )
+
+
+
 ; bonds are all explicit double and triple bonds as well as implicit
 ;
+
 
 (defn- singlebonds [atomvect]
   "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
