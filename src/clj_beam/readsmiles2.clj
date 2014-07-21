@@ -113,66 +113,12 @@
 
 (defn- getbonds [atomlist]
   "Bonds From Atom List"
-  (let [mapindexed (into [] (map-indexed vector atomlist))
-        dblocs     (filter #(= := (second %)) mapindexed)
-        tblocs     (filter #(= :# (second %)) mapindexed)
-        rblocs     (filter #(integer? (second %)) mapindexed)
-        fb         (filter #(= :( (second %)) mapindexed)
-        rb         (filter #(= :) (second %)) mapindexed)
-        getsinglebonds (fn [a b] (if (and (map? (second a))
-                                          (map? (second b)))
-                                     {:order :Single
-                                      :aromatic :No
-                                      :type  :Dot
-                                      :atoms [ (first a) (first b)] }
-                                     []
-                                   ))
-
-        ;; make the general for all of the bond orders
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        getdoublebonds (fn [x] (let [ab (atombefore x  mapindexed)
-                                     aa (atomafter  x  mapindexed)]
-
-                                   {:order :Double
-                                    :aromatic :No
-                                    :type  :Dot
-                                    :atoms [ (first ab) (first aa)] }))
-        gettriplebonds (fn [x] (let [ab (atombefore x  mapindexed)
-                                     aa (atomafter  x  mapindexed)]
-
-                                   {:order :Triple
-                                    :aromatic :No
-                                    :type  :Dot
-                                    :atoms [ (first ab) (first aa)] }))
-
-        getnestedbonds  (fn [x] "Fix This"
-                          )
-
-        getringbonds   (fn [dblocs]
-                         "Given an list of ring breakages, return bonds between them"
-                         )
-        getadjacentringbonds (fn [x]
-                               "Given an list of ring breakages, return the bonds not picked up by the singlebond function"
-                               )
-
-        ;; combine bonds
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        singlebonds (filter map?
-                (map #(apply getsinglebonds %) (partition 2 1 mapindexed)))
-
-        doublebonds (map getdoublebonds (map first dblocs))
-
-        triplebonds (map getdoublebonds (map first tblocs))
-
-        nestedbonds (filter map?
-                (map #(apply getnestedbonds %) (partition 2 1 mapindexed)))
-
-        ringbonds (filter map?
-                (map #(apply getringbonds %) (partition 2 1 mapindexed)))]
-
-    (into [] (concat singlebonds doublebonds triplebonds))
-    rblocs
-    ))
+  (let [singlebonds (getsinglebonds atomlist)
+        doublebonds (getdoublebonds atomlist)
+        triplebonds (gettriplebonds atomlist)
+        ringbonds   (getbrokenringbonds atomlist)
+        ringbonds2  (getadjacentringbonds atomlist)]
+    (into [] (concat singlebonds doublebonds triplebonds ringbonds ringbonds2))))
 
 (defn- getindices [x coll]
   "return the indeces of the collection whose value is x"
@@ -227,7 +173,7 @@
     (for [d tblocs]
       (cond
          (direct? d)   {:order :Double :atoms [(dec d) (inc d)] }
-         (indirect? d) {:order :Double :atoms [ (getnestedatomindex (dec d) coll 0 0) (inc d)]}))))
+         (indirect? d) {:order :Double :atoms [ (getnestedatomindex (dec d) atomlist 0 0) (inc d)]}))))
 
 (defn- getnestedatomindex [idx coll lb rb]
   "return the atom location for an implicit, nested bond
@@ -256,12 +202,6 @@
      (= :) (nth coll idx))
        (getnestedatomindex (dec idx) coll lb (inc rb))
      :else (getnestedatomindex (dec idx) coll lb rb)))
-
-;; (defn getringlocations [atomlist]
-;;   "get ring locations by checking for the location of integers"
-;;   (.getIn)
-;;   )
-
 
 (defn- getbrokenringbonds [atomlist]
   "Return Bonds from Broken rings and Single Bonds
@@ -299,97 +239,17 @@
                 :atoms [ (dec i) (inc i )]}
              :else "Problem!"  ))))
 
-(defn- atombefore [idx vect]
-  "for a given index of a vector contianing an indexed vector
-  find the first previous vector containing a map/atom "
-  (let [v2 (rseq (subvec vect 0 idx))]
-       (first (drop-while #(not (map? (second %))) v2))))
-
-(defn- atomafter [idx vect]
-  "for a given index of a vector containing an indexed vector
-  find the next vector contianing a map/atom "
-  (let [v2 (subvec vect 0 idx)]
-       (first (drop-while #(not (map? (second %)))  v2))))
-
-(defn- makebond [bondtype pos vect]
-  "create bond"
-   (let [ab (atombefore pos vect)
-         aa (atomafter  pos vect)]
-     ()))
-
-
- (defn- getdoublebonds [x]
-   ""
-   (let [ab (atombefore x  mapindexed)
-         aa (atomafter  x  mapindexed)]
-
-       {:order :Double
-        :aromatic :No
-        :type  :Dot
-        :atoms [ (first ab) (first aa)] }))
-
- (defn- gettriplebonds [x]
-   ""
-   (let [ab (atombefore x  mapindexed)
-         aa (atomafter  x  mapindexed)]
-
-       {:order :Triple
-        :aromatic :No
-        :type  :Dot
-        :atoms [ (first ab) (first aa)] }))
-
-getnestedbonds  (fn [x] "Fix This"
-                  )
-
-
-
-; bonds are all explicit double and triple bonds as well as implicit
-;
-
-
-(defn- singlebonds [atomvect]
-  "Parse Sequence and Generate Sequence Bonds. Note: This will NOT currently work on anyhting inside of brackets"
-   (let [ part  (partition 2 1 atomvect)
-          bonds (filter #(and (map? (second (first  %)))
-                              (map? (second (second %)))) part)
-          singlebond (fn [bond]
-                       {:atom1 (first (first bond)) :atom2 (first (second bond)) :order :Single :aromatic :No})]
-          (into [] (map singlebond bonds))))
-
-(defn- rings    [atomvect]
-  "Bonds from Rings"
-   (let [nums  (filter #(integer? (second  %)) atomvect) ;getrings numbers
-
-         ]
-     ;add rings based on numbers check the
-         "a"))
-
-(defn- doublebonds  [atomvect]
-  "Detect Double Bonds: Note that this method does not see things in brackets"
-     (let [b  (filter #(=  := (second  %)) atomvect) ]
-       ;check for being left of a parenthesis
-       ))
-
-(defn- triplebonds  [atomvect]
-  "Detect Triple Bonds: Note that this method doe snot see things in brackets"
-     (let [b  (filter #(=  := (second  %)) atomvect) ]
-       ;check for being left of a parenthesis
-       ))
-
-(defn- bondparenthesis  [atomvect]
-  "Detect bonds across parentheses"
-     (let []
-       ;check all nested and long bond
-       ))
-
-
 
 (def smiles (string/split  (slurp "data/smiles.txt") #"\n"))
 (def smi12 (nth smiles 12))
 (def smiA (nth smiles 6))
 smiA
+smiles
 
-(map readsmiles smiles)
+(def a (map readsmiles smiles))
+
+(getbonds (nth (filter vector? a) 7))
+a
 smiles
 smi12
 smitest
@@ -397,4 +257,3 @@ smitest
 
 (def a (map read-string "c1cccc1"))
 (integer? (second (map read-string (map str (seq "C1ccc1")))))
-
